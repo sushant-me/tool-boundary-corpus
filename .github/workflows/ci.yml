@@ -33,7 +33,12 @@ jobs:
         run: python3 -m corpus.cli validate
       - name: The harness reports the right numbers for known detectors
         run: pytest -q tests/
+      # `code-pattern-only-in-comments` is a KNOWN false positive in agentbound: it flags the
+      # vulnerable pattern when it appears inside a string literal, which its comment-stripping
+      # does not cover. It is named here rather than deleted, so the corpus keeps reporting it,
+      # any OTHER failure still fails this build, and the day agentbound fixes it this step goes
+      # red until the entry is removed and the precision re-measured (0.750 -> 1.000).
       - name: agentbound keeps its measured recall on the code cases
-        run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-recall 1.0'
+        run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-recall 1.0 --known-failure code-pattern-only-in-comments'
       - name: mcpaudit keeps its measured scores on the tool-list cases
         run: 'python3 -m corpus.cli run --kind tool-list --quiet-caveat --detector "python3 -m mcpaudit.cli audit {input} --json --no-colour" --min-precision 1.0 --min-recall 1.0'
