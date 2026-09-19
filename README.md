@@ -23,9 +23,13 @@ as "found nothing" — otherwise a broken detector would score perfectly on the 
 | detector | kind | cases | precision | recall | F1 |
 |---|---|---:|---:|---:|---:|
 | [`mcpaudit`](https://github.com/sushant-me/mcpaudit) | tool-list (13) | 13 | **1.000** | **1.000** | 1.000 |
-| [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.10 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
+| [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.11 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
 
-Reproduce either row with the commands above; `--json` gives the per-case breakdown.
+Reproduce either row with the commands above; `--json` gives the per-case breakdown. Both
+rows name the build they were measured from, and the test suite refuses to report a number
+for a different one — a stale `agentbound` on `PATH` once produced precision **0.750** here,
+which is the number this repository exists to prove was fixed, so a version mismatch was
+indistinguishable from a real regression.
 
 > ### Read this before quoting those numbers
 >
@@ -70,11 +74,21 @@ recall floor to precision **and** recall.
 | recall on this corpus | 1.000 | 1.000 |
 | `agentbound scan agentbound` (its CI contract) | exit 0 | exit 0 |
 | repository-root scan (fixtures on purpose) | 25 findings | 16 |
-| agentbound's own tests | 114 | 117 |
+| agentbound's own tests | 111 | 114 |
 
 A benchmark that cannot report a bad number is not a benchmark, and a regression that can be
 deleted is not a regression. This one was reported, named, fixed, re-measured, and is now
 guarded at the stricter threshold.
+
+**A second defect came out of writing the guard for this one.** The score is measured from an
+installed release, so the test names the release it expects. Adding that check required
+reading `agentbound --version` — which printed **0.1.9** on the v0.1.10 release, because
+`pyproject.toml` carried the bump and `agentbound/__init__.py` did not and nothing compared
+them. A consumer pinning that project by release could not tell which build it had, which is
+this repository's entire method. v0.1.10 is immutable, so
+[agentbound v0.1.11](https://github.com/sushant-me/agentbound/releases/tag/v0.1.11) carries
+the fix and the test that pins the two version strings together; the pin here moved with it.
+The corpus is measured against v0.1.11 and the numbers above are unchanged.
 
 ## The cases
 
@@ -111,6 +125,8 @@ for the inputs a detector claims to handle.
 
 ## Status
 
-`v0.1.0`, stdlib only, 17 tests (the harness's own behaviour is tested with fake detectors),
-CI on 3.11/3.12/3.13 with both detectors installed at pinned commits and both rows above
-re-measured.
+`v0.1.0`, stdlib only, 27 tests (the harness's own behaviour is tested with fake detectors),
+CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
+commit, `agentbound` at v0.1.11 — and both rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
+is set there, so a detector that fails to install or does not match its pin fails the run
+instead of skipping past it.

@@ -12,6 +12,8 @@ because a silently skipped case is a hole in a benchmark.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,6 +33,35 @@ def write_detector(tmp_path: Path, body: str) -> str:
     path = tmp_path / "detector.py"
     path.write_text(body, encoding="utf-8")
     return f"{sys.executable} {path} {{input}}"
+
+
+def _require_or_skip(reason: str) -> None:
+    """Skip, unless the environment says a skip is not acceptable.
+
+    CI installs both detectors at pinned commits and sets
+    `CORPUS_REQUIRE_DETECTORS=1`, so a missing or mismatched detector is an error
+    there. Without it, a broken install would silently reduce the benchmark to
+    zero cases - the same failure mode the corpus refuses everywhere else.
+    """
+    if os.environ.get("CORPUS_REQUIRE_DETECTORS") == "1":
+        pytest.fail(reason)
+    pytest.skip(reason)
+
+
+def _installed_commit(distribution: str) -> str | None:
+    """The commit a pip VCS install records in PEP 610 `direct_url.json`."""
+    import importlib.metadata as metadata
+
+    try:
+        raw = metadata.distribution(distribution).read_text("direct_url.json")
+    except metadata.PackageNotFoundError:
+        return None
+    if not raw:
+        return None
+    try:
+        return json.loads(raw).get("vcs_info", {}).get("commit_id")
+    except json.JSONDecodeError:
+        return None
 
 
 PERFECT = """
@@ -242,21 +273,56 @@ def test_the_self_authored_caveat_is_printed_in_every_report() -> None:
 
 
 # -- the measured numbers, as a regression gate ------------------------------
+#
+# Each row names the exact build it was measured from, and refuses to report a
+# number for a different one. A stale detector on PATH previously produced
+# precision 0.750 here - the number this repository exists to prove was fixed -
+# so a mismatch was indistinguishable from a real regression.
+
+PINNED_MCPAUDIT_COMMIT = "11cd592031703bec89c2ed93525c0ee91bc11434"
 
 
 def test_mcpaudit_keeps_its_measured_scores_on_the_tool_list_cases() -> None:
     """A regression gate, with the caveat stated: this corpus is self-authored.
 
-    Where mcpaudit is not importable the test skips rather than passing silently; CI sets
-    PYTHONPATH so it runs.
+    The build is identified by the commit pip installed it from, not by its version
+    string. mcpaudit is pinned to a commit rather than a release and its
+    `__version__` is not bumped per commit, so the version cannot distinguish two
+    builds - the commit can, and `direct_url.json` records it.
     """
-    pytest.importorskip("mcpaudit", reason="mcpaudit not installed; CI provides it")
+    try:
+        import mcpaudit  # noqa: F401
+    except ImportError:
+        _require_or_skip(
+            "mcpaudit is not installed; CI installs it at a pinned commit "
+            f"({PINNED_MCPAUDIT_COMMIT[:7]})"
+        )
+    commit = _installed_commit("mcpaudit")
+    if commit != PINNED_MCPAUDIT_COMMIT:
+        _require_or_skip(
+            f"mcpaudit was installed from {commit or 'an unknown source'}, but this "
+            f"repository measures {PINNED_MCPAUDIT_COMMIT}; install that commit to "
+            f"reproduce the score"
+        )
+
     cases = [c for c in load_cases(CORPUS) if c.kind == "tool-list"]
     command = f"{sys.executable} -m mcpaudit.cli audit {{input}} --json --no-colour"
     summary = metrics(evaluate(cases, command))
     assert summary["errors"] == 0
     assert summary["recall"] == 1.0, summary
     assert summary["precision"] == 1.0, summary
+
+
+def test_the_installed_commit_is_read_from_the_distribution(tmp_path, monkeypatch) -> None:
+    """The mechanism the check above rests on, tested without a network install.
+
+    `pip install git+...@<sha>` writes PEP 610 `direct_url.json` into the
+    distribution, so the commit is available locally. If that ever stops being
+    true the check must say so rather than silently compare against nothing.
+    """
+    assert _installed_commit("a-distribution-that-does-not-exist") is None
+    # A version check would compare "" to the pin and "pass" nothing; this cannot.
+    assert _installed_commit("a-distribution-that-does-not-exist") != PINNED_MCPAUDIT_COMMIT
 
 
 # -- --known-failure: named, visible, and unable to rot ----------------------
@@ -331,21 +397,95 @@ def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
     assert len(payload["cases"]) == 5
 
 
+# --- the detector has to be the build whose score is being asserted ---------
+#
+# A stale `agentbound` on PATH measured precision 0.750 here and the failure read
+# exactly like the false positive coming back. It was 0.1.8: the bug, not the fix,
+# and nothing in the test could tell the difference. So the version is checked
+# before the score is, and CI - which installs the pinned release - fails rather
+# than skips when the check cannot be made.
+
+PINNED_AGENTBOUND = "0.1.11"
+
+
+def _detector_version(binary: str) -> str:
+    """The version a detector reports, or a placeholder if it cannot be read."""
+    try:
+        result = subprocess.run(
+            [binary, "--version"], capture_output=True, text=True, timeout=60
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return f"<unreadable: {exc.__class__.__name__}>"
+    if result.returncode != 0:
+        return f"<exit {result.returncode}>"
+    return result.stdout.strip() or "<empty>"
+
+
 def test_agentbound_holds_its_measured_scores_on_the_code_cases() -> None:
     """The regression that this corpus found and agentbound v0.1.10 fixed.
 
     Before the fix this measured precision 0.750: `code-pattern-only-in-comments` was
     reported at a line inside a string bound to a name. The number is asserted here as
     well as in CI, so the improvement cannot quietly revert.
+
+    The version is checked first. A different build makes this test meaningless in
+    both directions: an older one reports the old number as though the fix had
+    reverted, and a newer one asserts a score nobody measured.
     """
     import shutil
 
     binary = shutil.which("agentbound")
     if binary is None:
-        pytest.skip("agentbound is not installed; CI installs it at a pinned release")
+        _require_or_skip(
+            "agentbound is not installed; CI installs it at a pinned release "
+            f"(v{PINNED_AGENTBOUND})"
+        )
+    version = _detector_version(binary)
+    if version != PINNED_AGENTBOUND:
+        _require_or_skip(
+            f"agentbound on PATH ({binary}) reports version {version}, but this "
+            f"repository measures v{PINNED_AGENTBOUND}; install that release to "
+            f"reproduce the score"
+        )
 
     cases = [c for c in load_cases(CORPUS) if c.kind == "code"]
     summary = metrics(evaluate(cases, f"{binary} scan {{input}} --json"))
     assert summary["errors"] == 0, summary
     assert summary["recall"] == 1.0, summary
     assert summary["precision"] == 1.0, summary
+
+
+def test_a_detector_at_the_wrong_version_is_refused_not_measured(tmp_path) -> None:
+    """Regression: a stale agentbound 0.1.8 on PATH reported precision 0.750.
+
+    That number is the one this repository exists to prove was fixed, so a bare
+    mismatch is indistinguishable from a real regression in the output - which is
+    how it was read the first time.
+    """
+    fake = tmp_path / "agentbound"
+    fake.write_text("#!/bin/sh\necho 0.1.8\n", encoding="utf-8")
+    fake.chmod(0o755)
+    assert _detector_version(str(fake)) == "0.1.8"
+    assert _detector_version(str(fake)) != PINNED_AGENTBOUND
+
+
+def test_the_version_check_fails_closed_when_ci_asks_it_to(monkeypatch) -> None:
+    """A skip is a hole unless CI can forbid it."""
+    monkeypatch.setenv("CORPUS_REQUIRE_DETECTORS", "1")
+    with pytest.raises(pytest.fail.Exception):
+        _require_or_skip("no detector")
+
+
+def test_a_detector_that_cannot_report_a_version_is_not_treated_as_matching(
+    tmp_path,
+) -> None:
+    """Unreadable is not the same as correct, and must never read as a match."""
+    broken = tmp_path / "agentbound"
+    broken.write_text("#!/bin/sh\nexit 3\n", encoding="utf-8")
+    broken.chmod(0o755)
+    version = _detector_version(str(broken))
+    assert version != PINNED_AGENTBOUND
+    assert "3" in version, version
+
+    missing = str(tmp_path / "not-a-binary")
+    assert _detector_version(missing) != PINNED_AGENTBOUND

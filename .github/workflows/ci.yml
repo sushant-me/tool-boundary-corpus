@@ -21,18 +21,24 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
-      # Both detectors pinned to a commit, so this repository cannot go red because another
-      # one moved, and so the two rows in the README are re-measured on every push.
-      - name: Install the detectors at pinned commits
+      # Both detectors pinned, so this repository cannot go red because another one moved,
+      # and so the two rows in the README are re-measured on every push.
+      - name: Install the detectors at pinned revisions
         run: |
           # No `|| true` anywhere here: a detector that fails to install must fail the run,
           # not silently reduce the benchmark to zero cases.
           pip install "git+https://github.com/sushant-me/mcpaudit@11cd592031703bec89c2ed93525c0ee91bc11434"
-          pip install "git+https://github.com/sushant-me/agentbound@v0.1.10"
+          pip install "git+https://github.com/sushant-me/agentbound@v0.1.11"
       - name: Every case is well formed
         run: python3 -m corpus.cli validate
+      # CORPUS_REQUIRE_DETECTORS turns the two detector tests' skip into a failure. They skip
+      # when the detector is absent or is not the pinned build, which is right on a laptop and
+      # wrong here: a broken install would otherwise take this benchmark down to the harness's
+      # own tests and still show green. The pins above are the versions asserted.
       - name: The harness reports the right numbers for known detectors
         run: pytest -q tests/
+        env:
+          CORPUS_REQUIRE_DETECTORS: "1"
       # This step used to carry `--known-failure code-pattern-only-in-comments`, because
       # agentbound flagged the vulnerable pattern when it appeared inside a string literal.
       # That entry did its job: agentbound v0.1.10 fixed it, this build went red ("now passes
