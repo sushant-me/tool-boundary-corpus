@@ -257,3 +257,75 @@ def test_mcpaudit_keeps_its_measured_scores_on_the_tool_list_cases() -> None:
     assert summary["errors"] == 0
     assert summary["recall"] == 1.0, summary
     assert summary["precision"] == 1.0, summary
+
+
+# -- --known-failure: named, visible, and unable to rot ----------------------
+
+
+def run_cli(*args: str):
+    import subprocess
+
+    return subprocess.run(
+        [sys.executable, "-m", "corpus.cli", *args],
+        capture_output=True, text=True, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT / "src"), "PATH": "/usr/bin:/bin",
+             "PYTHONDONTWRITEBYTECODE": "1"},
+    )
+
+
+def silent_detector(tmp_path) -> str:
+    return write_detector(tmp_path, 'import json\nprint(json.dumps({"findings": []}))\n')
+
+
+def test_a_known_failure_is_not_counted_and_the_run_passes(tmp_path) -> None:
+    # A silent detector misses every positive, so all three have to be declared known for
+    # the run to pass. My first version declared one and expected exit 0 — the unlisted two
+    # failed it, which is the behaviour working correctly.
+    command = silent_detector(tmp_path)
+    result = run_cli("run", "--kind", "code", "--quiet-caveat", "--detector", command,
+                     "--known-failure", "code-tools-dict-last-wins",
+                     "--known-failure", "code-confirmation-fails-open",
+                     "--known-failure", "code-reserved-name-set-incomplete")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("known failure (expected, not counted)") == 3
+
+
+def test_an_unlisted_failure_still_fails_the_run(tmp_path) -> None:
+    command = silent_detector(tmp_path)
+    result = run_cli("run", "--kind", "code", "--quiet-caveat", "--detector", command)
+    assert result.returncode == 1
+
+
+def test_a_known_failure_that_starts_passing_is_an_error(tmp_path) -> None:
+    """Otherwise the entry lingers, the case is never expected to fail again, and the
+    benchmark quietly gets one case weaker."""
+    command = write_detector(tmp_path, """
+import json, sys, pathlib
+target = pathlib.Path(sys.argv[1])
+text = "".join(p.read_text() for p in target.rglob("*") if p.is_file())
+rules = ["tool-dict-last-wins"] if "tools_dict[tool.name] = tool" in text else []
+print(json.dumps({"findings": [{"rule": r} for r in rules]}))
+""")
+    result = run_cli("run", "--kind", "code", "--quiet-caveat", "--detector", command,
+                     "--known-failure", "code-tools-dict-last-wins")
+    assert result.returncode == 1
+    assert "now passes" in result.stderr
+
+
+def test_a_known_failure_naming_a_case_not_in_the_run_is_refused(tmp_path) -> None:
+    command = silent_detector(tmp_path)
+    result = run_cli("run", "--kind", "code", "--detector", command,
+                     "--known-failure", "no-such-case")
+    assert result.returncode == 2
+    assert "not in this run" in result.stderr
+
+
+def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
+    import json as jsonlib
+
+    command = silent_detector(tmp_path)
+    result = run_cli("run", "--kind", "code", "--detector", command, "--json")
+    payload = jsonlib.loads(result.stdout)
+    assert payload["metrics"]["recall"] == 0.0
+    assert "self-authored" in payload["caveat"].lower()
+    assert len(payload["cases"]) == 5

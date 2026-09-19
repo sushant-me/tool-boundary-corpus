@@ -62,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--min-recall", type=float, default=None)
     run_parser.add_argument("--quiet-caveat", action="store_true",
                             help="suppress the self-authored-corpus warning (for CI logs)")
+    run_parser.add_argument("--known-failure", action="append", default=[],
+                            metavar="CASE_ID",
+                            help="a case this detector is known to fail; any OTHER failure "
+                                 "still fails the run, and a known failure that starts "
+                                 "passing is an error too, so the entry cannot rot")
 
     args = parser.parse_args(argv)
 
@@ -109,7 +114,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.quiet_caveat:
             print("\n(self-authored corpus — regression gate, not an independent benchmark)")
 
-    failed = [o for o in outcomes if not o.passed]
+    known = set(args.known_failure)
+    failed = [o for o in outcomes if not o.passed and o.case.id not in known]
+    fixed = [o for o in outcomes if o.passed and o.case.id in known]
+    unknown_known = known - {o.case.id for o in outcomes}
+    if not args.json:
+        for outcome in outcomes:
+            if outcome.case.id in known and not outcome.passed:
+                print(f"  known failure (expected, not counted): {outcome.case.id}")
+    if unknown_known:
+        print(f"corpus: --known-failure names cases that are not in this run: "
+              f"{sorted(unknown_known)}", file=sys.stderr)
+        return 2
+    if fixed:
+        # A stale expectation is how a benchmark quietly stops guarding anything.
+        for outcome in fixed:
+            print(f"corpus: {outcome.case.id} now passes — remove it from --known-failure "
+                  f"and re-measure", file=sys.stderr)
+        return 1
     if args.min_precision is not None and summary["precision"] < args.min_precision:
         print(f"corpus: precision {summary['precision']:.3f} < {args.min_precision:.3f}", file=sys.stderr)
         return 1
