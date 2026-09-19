@@ -1,0 +1,31 @@
+[project]
+name = "tool-boundary-corpus"
+version = "0.1.0"
+description = "A labelled corpus of agent tool-boundary cases and a detector-agnostic harness that scores precision and recall against them"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["ai-security", "agents", "mcp", "benchmark", "evaluation", "tool-boundary"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+  "Intended Audience :: Developers",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+corpus = "corpus.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["corpus"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,14 @@
+{
+  "id": "code-reserved-name-set-incomplete",
+  "kind": "code",
+  "label": "positive",
+  "expected_rules": [
+    "tool-reserved-name-shadowing"
+  ],
+  "source": "google/adk-python mcp_tool.py:69 -- _RESERVED_TOOL_NAMES missing set_model_response, which the framework owns.",
+  "fixture": {
+    "files": {
+      "mcp_tool.py": "from typing import Any\n\n# The framework's own terminal tool, defined here and therefore framework-owned.\n_RESERVED_TOOL_NAMES = frozenset({\"finish\", \"transfer_to_agent\", \"google_search\"})\n\n\ndef set_model_response(response: str) -> dict[str, Any]:\n    \"\"\"Framework-owned: the final structured answer. Must occupy its name.\"\"\"\n    return {\"response\": response}\n\n\ndef attach(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:\n    kept = []\n    for tool in tools:\n        if tool[\"name\"] in _RESERVED_TOOL_NAMES:\n            continue\n        kept.append(tool)\n    return kept\n"
+    }
+  }
+}

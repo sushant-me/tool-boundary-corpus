@@ -1,0 +1,27 @@
+{
+  "id": "tools-destructive-declared",
+  "kind": "tool-list",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "A destructive tool that says so: the client is told to ask a human, which is the point of the annotation.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "delete_account",
+        "description": "Permanently deletes a customer account.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "account_id": {
+              "type": "string",
+              "pattern": "^[0-9]{6}$"
+            }
+          }
+        },
+        "annotations": {
+          "destructiveHint": true
+        }
+      }
+    ]
+  }
+}

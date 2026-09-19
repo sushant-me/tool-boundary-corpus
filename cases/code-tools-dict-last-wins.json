@@ -1,0 +1,14 @@
+{
+  "id": "code-tools-dict-last-wins",
+  "kind": "code",
+  "label": "positive",
+  "expected_rules": [
+    "tool-dict-last-wins"
+  ],
+  "source": "A registry that logs a duplicate and then overwrites it: the warning is not a guard.",
+  "fixture": {
+    "files": {
+      "registry.py": "import logging\n\nlogger = logging.getLogger(__name__)\n\n\nclass Registry:\n    def __init__(self) -> None:\n        self.tools_dict = {}\n\n    def add(self, tool) -> None:\n        if tool.name in self.tools_dict:\n            logger.warning(\"duplicate tool name %s\", tool.name)\n        self.tools_dict[tool.name] = tool\n"
+    }
+  }
+}

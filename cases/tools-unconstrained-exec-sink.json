@@ -1,0 +1,28 @@
+{
+  "id": "tools-unconstrained-exec-sink",
+  "kind": "tool-list",
+  "label": "positive",
+  "expected_rules": [
+    "unconstrained-sink-parameter"
+  ],
+  "source": "An unconstrained string reaching a shell is the difference between running a command and running any command.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "run_task",
+        "description": "Runs a maintenance task.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "destructiveHint": true
+        }
+      }
+    ]
+  }
+}

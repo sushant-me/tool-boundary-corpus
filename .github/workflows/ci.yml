@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      # Both detectors pinned to a commit, so this repository cannot go red because another
+      # one moved, and so the two rows in the README are re-measured on every push.
+      - name: Install the detectors at pinned commits
+        run: |
+          # No `|| true` anywhere here: a detector that fails to install must fail the run,
+          # not silently reduce the benchmark to zero cases.
+          pip install "git+https://github.com/sushant-me/mcpaudit@11cd592031703bec89c2ed93525c0ee91bc11434"
+          pip install "git+https://github.com/sushant-me/agentbound@d647852bd58649077cff59cd75e7ce94e0b36bbc"
+      - name: Every case is well formed
+        run: python3 -m corpus.cli validate
+      - name: The harness reports the right numbers for known detectors
+        run: pytest -q tests/
+      - name: agentbound keeps its measured recall on the code cases
+        run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-recall 1.0'
+      - name: mcpaudit keeps its measured scores on the tool-list cases
+        run: 'python3 -m corpus.cli run --kind tool-list --quiet-caveat --detector "python3 -m mcpaudit.cli audit {input} --json --no-colour" --min-precision 1.0 --min-recall 1.0'

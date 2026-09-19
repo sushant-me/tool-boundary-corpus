@@ -1,0 +1,24 @@
+{
+  "id": "tools-empty-description",
+  "kind": "tool-list",
+  "label": "positive",
+  "expected_rules": [
+    "undocumented-tool"
+  ],
+  "source": "A tool with no description cannot be reviewed before it is called.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "mystery",
+        "description": "",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      }
+    ]
+  }
+}

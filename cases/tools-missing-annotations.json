@@ -1,0 +1,25 @@
+{
+  "id": "tools-missing-annotations",
+  "kind": "tool-list",
+  "label": "positive",
+  "expected_rules": [
+    "missing-annotations"
+  ],
+  "source": "MCP tool annotations (readOnlyHint/destructiveHint) are optional; absent hints mean every client guesses.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "delete_record",
+        "description": "Deletes a record permanently.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "code-guarded-registry",
+  "kind": "code",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "The correct implementation of the same registry: a duplicate is refused, not logged.",
+  "fixture": {
+    "files": {
+      "registry.py": "class Registry:\n    def __init__(self) -> None:\n        self.tools_dict = {}\n\n    def add(self, tool) -> None:\n        if tool.name in self.tools_dict:\n            raise ValueError(f\"duplicate tool name: {tool.name}\")\n        self.tools_dict[tool.name] = tool\n"
+    }
+  }
+}

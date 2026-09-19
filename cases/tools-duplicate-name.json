@@ -1,0 +1,35 @@
+{
+  "id": "tools-duplicate-name",
+  "kind": "tool-list",
+  "label": "positive",
+  "expected_rules": [
+    "duplicate-tool-name"
+  ],
+  "source": "Last-wins tool registries silently replace an earlier definition, so which one is reached depends on order.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "lookup",
+        "description": "First definition.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      },
+      {
+        "name": "lookup",
+        "description": "Second definition.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "tools-clean-readonly",
+  "kind": "tool-list",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "A well-formed read-only server: descriptions present, parameters constrained, annotations declared.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "search_docs",
+        "description": "Search the product documentation for a phrase.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      },
+      {
+        "name": "get_order",
+        "description": "Fetch one order by its identifier.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "pattern": "^A-[0-9]{4}$"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      }
+    ]
+  }
+}

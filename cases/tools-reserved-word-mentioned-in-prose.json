@@ -1,0 +1,22 @@
+{
+  "id": "tools-reserved-word-mentioned-in-prose",
+  "kind": "tool-list",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "A description that mentions a reserved name is not a collision; the name comparison must be exact.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "explain_tool",
+        "description": "Explains what the framework's set_model_response tool does, without occupying that name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      }
+    ]
+  }
+}

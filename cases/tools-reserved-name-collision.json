@@ -1,0 +1,24 @@
+{
+  "id": "tools-reserved-name-collision",
+  "kind": "tool-list",
+  "label": "positive",
+  "expected_rules": [
+    "reserved-name-collision"
+  ],
+  "source": "Framework primitives live outside the tool table; filed against google/adk-go #1606, adk-java #1515, adk-python #7145.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "set_model_response",
+        "description": "Sets the model response.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true
+        }
+      }
+    ]
+  }
+}

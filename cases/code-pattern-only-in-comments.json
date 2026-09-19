@@ -1,0 +1,12 @@
+{
+  "id": "code-pattern-only-in-comments",
+  "kind": "code",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "Regression case from agentbound's own fix 'a comment is not code, so a rule must not match one'.",
+  "fixture": {
+    "files": {
+      "notes.py": "# Never do this: self.tools_dict[tool.name] = tool after a warning.\n# Also never ship _RESERVED_TOOL_NAMES = frozenset() missing set_model_response.\nDOCSTRING = \"\"\"\n    if tool.name in self.tools_dict:\n        logger.warning(\"duplicate\")\n    self.tools_dict[tool.name] = tool\n\"\"\"\n\n\ndef explain() -> str:\n    \"\"\"Describe the anti-pattern without performing it.\"\"\"\n    return DOCSTRING\n"
+    }
+  }
+}

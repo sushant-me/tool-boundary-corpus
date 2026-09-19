@@ -1,0 +1,14 @@
+{
+  "id": "code-confirmation-fails-open",
+  "kind": "code",
+  "label": "positive",
+  "expected_rules": [
+    "confirmation-gate-fails-open"
+  ],
+  "source": "google/adk-python mcp_tool.py:437 -- inspect.signature(predicate) evaluated without handling failure, so the gate opens.",
+  "fixture": {
+    "files": {
+      "mcp_tool.py": "import inspect\nfrom typing import Any\n\n\ndef require_confirmation(predicate, arguments: dict[str, Any]) -> bool:\n    \"\"\"Ask the predicate whether this call needs a human.\n\n    The predicate's own signature is used to decide which arguments it receives, so a\n    generic predicate is called with its defaults, answers \"no\", and the gate opens.\n    \"\"\"\n    signature = inspect.signature(predicate)\n    valid_params = set(signature.parameters.keys())\n    filtered = {k: v for k, v in arguments.items() if k in valid_params}\n    return bool(predicate(**filtered))\n"
+    }
+  }
+}
