@@ -329,3 +329,23 @@ def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
     assert payload["metrics"]["recall"] == 0.0
     assert "self-authored" in payload["caveat"].lower()
     assert len(payload["cases"]) == 5
+
+
+def test_agentbound_holds_its_measured_scores_on_the_code_cases() -> None:
+    """The regression that this corpus found and agentbound v0.1.10 fixed.
+
+    Before the fix this measured precision 0.750: `code-pattern-only-in-comments` was
+    reported at a line inside a string bound to a name. The number is asserted here as
+    well as in CI, so the improvement cannot quietly revert.
+    """
+    import shutil
+
+    binary = shutil.which("agentbound")
+    if binary is None:
+        pytest.skip("agentbound is not installed; CI installs it at a pinned release")
+
+    cases = [c for c in load_cases(CORPUS) if c.kind == "code"]
+    summary = metrics(evaluate(cases, f"{binary} scan {{input}} --json"))
+    assert summary["errors"] == 0, summary
+    assert summary["recall"] == 1.0, summary
+    assert summary["precision"] == 1.0, summary

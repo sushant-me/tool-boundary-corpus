@@ -28,17 +28,17 @@ jobs:
           # No `|| true` anywhere here: a detector that fails to install must fail the run,
           # not silently reduce the benchmark to zero cases.
           pip install "git+https://github.com/sushant-me/mcpaudit@11cd592031703bec89c2ed93525c0ee91bc11434"
-          pip install "git+https://github.com/sushant-me/agentbound@d647852bd58649077cff59cd75e7ce94e0b36bbc"
+          pip install "git+https://github.com/sushant-me/agentbound@v0.1.10"
       - name: Every case is well formed
         run: python3 -m corpus.cli validate
       - name: The harness reports the right numbers for known detectors
         run: pytest -q tests/
-      # `code-pattern-only-in-comments` is a KNOWN false positive in agentbound: it flags the
-      # vulnerable pattern when it appears inside a string literal, which its comment-stripping
-      # does not cover. It is named here rather than deleted, so the corpus keeps reporting it,
-      # any OTHER failure still fails this build, and the day agentbound fixes it this step goes
-      # red until the entry is removed and the precision re-measured (0.750 -> 1.000).
-      - name: agentbound keeps its measured recall on the code cases
-        run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-recall 1.0 --known-failure code-pattern-only-in-comments'
+      # This step used to carry `--known-failure code-pattern-only-in-comments`, because
+      # agentbound flagged the vulnerable pattern when it appeared inside a string literal.
+      # That entry did its job: agentbound v0.1.10 fixed it, this build went red ("now passes
+      # — remove it from --known-failure"), and the entry was removed with the gate tightened
+      # from a recall floor to precision AND recall. Precision went 0.750 -> 1.000.
+      - name: agentbound holds its measured scores on the code cases
+        run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-precision 1.0 --min-recall 1.0'
       - name: mcpaudit keeps its measured scores on the tool-list cases
         run: 'python3 -m corpus.cli run --kind tool-list --quiet-caveat --detector "python3 -m mcpaudit.cli audit {input} --json --no-colour" --min-precision 1.0 --min-recall 1.0'

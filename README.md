@@ -23,7 +23,7 @@ as "found nothing" — otherwise a broken detector would score perfectly on the 
 | detector | kind | cases | precision | recall | F1 |
 |---|---|---:|---:|---:|---:|
 | [`mcpaudit`](https://github.com/sushant-me/mcpaudit) | tool-list (13) | 13 | **1.000** | **1.000** | 1.000 |
-| [`agentbound`](https://github.com/sushant-me/agentbound) | code (5) | 5 | **0.750** | **1.000** | 0.857 |
+| [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.10 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
 
 Reproduce either row with the commands above; `--json` gives the per-case breakdown.
 
@@ -38,11 +38,11 @@ Reproduce either row with the commands above; `--json` gives the per-case breakd
 > trigger-happy one, a crashing one — so a harness that flatters every input fails its own
 > tests.
 
-## The false positive this corpus found
+## The false positive this corpus found — and the fix it caused
 
-`agentbound` scores precision 0.750, and the miss is real rather than a fixture artefact.
-Case `code-pattern-only-in-comments` is a file where the vulnerable pattern appears **only
-inside a triple-quoted string**:
+`agentbound` first measured **precision 0.750** here, and the miss was real rather than a
+fixture artefact. Case `code-pattern-only-in-comments` is a file where the vulnerable
+pattern appears **only inside a triple-quoted string bound to a name**:
 
 ```python
 DOCSTRING = """
@@ -52,19 +52,29 @@ DOCSTRING = """
 """
 ```
 
-`agentbound` reports `tool-dict-last-wins` at line 6, inside that string. Its fix for this
-class — *"a comment is not code, so a rule must not match one"* — strips `#` comments but
-not string literals, and untaken string content is no more executable than a comment. The
-case is kept as a negative, so the corpus keeps reporting it until the detector handles it.
+It was reported at line 6, inside that string. The detector's masking already treated a
+bare string statement (a docstring) as prose, and deliberately kept string *arguments*
+visible because `tool-dict-last-wins` reads the logging message as evidence — a string
+assigned to a name fell between the two, so documentation was scanned as code.
 
-Two of my initial fixtures also scored as misses, and the investigation is worth recording
-because the first conclusion ("recall gap") was wrong: `tool-reserved-name-shadowing`
-requires a framework-owned tool to be *defined* (`def set_model_response(`) as well as
-missing from the reserved set, and `confirmation-gate-fails-open` requires the whole
-relation — a signature assignment, the parameters extracted from it, and a dict
-comprehension filtering arguments by it. My fixtures had the weakness but not the shape the
-rule documents, so the corpus was wrong, not the detector. Both now encode the documented
-precondition.
+**This corpus kept the case failing and named it in CI** (`--known-failure
+code-pattern-only-in-comments`) rather than deleting the case or ignoring the failure. That
+entry did its job: [agentbound v0.1.10](https://github.com/sushant-me/agentbound/releases/tag/v0.1.10)
+extends the prose classifier to assignment values, this build went red with *"now passes —
+remove it from --known-failure"*, and the entry was removed with the gate tightened from a
+recall floor to precision **and** recall.
+
+| check | before | after |
+|---|---|---|
+| precision on this corpus | 0.750 | **1.000** |
+| recall on this corpus | 1.000 | 1.000 |
+| `agentbound scan agentbound` (its CI contract) | exit 0 | exit 0 |
+| repository-root scan (fixtures on purpose) | 25 findings | 16 |
+| agentbound's own tests | 114 | 117 |
+
+A benchmark that cannot report a bad number is not a benchmark, and a regression that can be
+deleted is not a regression. This one was reported, named, fixed, re-measured, and is now
+guarded at the stricter threshold.
 
 ## The cases
 
