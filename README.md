@@ -49,6 +49,8 @@ fixture artefact. Case `code-pattern-only-in-comments` is a file where the vulne
 pattern appears **only inside a triple-quoted string bound to a name**:
 
 ```python
+# Never do this: self.tools_dict[tool.name] = tool after a warning.
+# Also never ship _RESERVED_TOOL_NAMES = frozenset() missing set_model_response.
 DOCSTRING = """
     if tool.name in self.tools_dict:
         logger.warning("duplicate")
@@ -56,10 +58,12 @@ DOCSTRING = """
 """
 ```
 
-It was reported at line 6, inside that string. The detector's masking already treated a
-bare string statement (a docstring) as prose, and deliberately kept string *arguments*
-visible because `tool-dict-last-wins` reads the logging message as evidence — a string
-assigned to a name fell between the two, so documentation was scanned as code.
+It was reported at line 6, inside that string — and the two comment lines above it are
+themselves the fixture for an earlier fix, in which the same rule matched the comment block
+documenting the idiom. The detector's masking already treated a bare string statement (a
+docstring) as prose, and deliberately kept string *arguments* visible because
+`tool-dict-last-wins` reads the logging message as evidence — a string assigned to a name fell
+between the two, so documentation was scanned as code.
 
 **This corpus kept the case failing and named it in CI** (`--known-failure
 code-pattern-only-in-comments`) rather than deleting the case or ignoring the failure. That
