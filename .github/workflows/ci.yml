@@ -27,7 +27,7 @@ jobs:
         run: |
           # No `|| true` anywhere here: a detector that fails to install must fail the run,
           # not silently reduce the benchmark to zero cases.
-          pip install "git+https://github.com/sushant-me/mcpaudit@11cd592031703bec89c2ed93525c0ee91bc11434"
+          pip install "git+https://github.com/sushant-me/mcpaudit@e9b988ba56b318120167e885b107c43cd0e7fb8b"
           pip install "git+https://github.com/sushant-me/agentbound@v0.1.11"
       - name: Every case is well formed
         run: python3 -m corpus.cli validate

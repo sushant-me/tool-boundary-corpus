@@ -22,7 +22,7 @@ as "found nothing" — otherwise a broken detector would score perfectly on the 
 
 | detector | kind | cases | precision | recall | F1 |
 |---|---|---:|---:|---:|---:|
-| [`mcpaudit`](https://github.com/sushant-me/mcpaudit) | tool-list (13) | 13 | **1.000** | **1.000** | 1.000 |
+| [`mcpaudit`](https://github.com/sushant-me/mcpaudit) v0.1.1 | tool-list (14) | 14 | **1.000** | **1.000** | 1.000 |
 | [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.11 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
 
 Reproduce either row with the commands above; `--json` gives the per-case breakdown. Both
@@ -96,13 +96,13 @@ The corpus is measured against v0.1.11 and the numbers above are unchanged.
 
 ## The cases
 
-**18 cases: 13 tool-list declarations, 5 code.** Each is a JSON file with an id, kind,
+**19 cases: 14 tool-list declarations, 5 code.** Each is a JSON file with an id, kind,
 label, the rules a detector is expected to report, the *source* of the pattern, and the
 fixture.
 
 | kind | positives (must be flagged) | negatives (must stay clean) |
 |---|---|---|
-| `tool-list` | reserved-name collision, instruction-carrying description, invisible tag-block payload, look-alike names, a destructive tool declaring `readOnlyHint`, missing annotations, unconstrained execution sink, duplicate name, empty description | a well-formed read-only server, a description that merely *mentions* a reserved name, the same shell tool with an `enum`-constrained parameter, a destructive tool that says so |
+| `tool-list` | reserved-name collision, instruction-carrying description, invisible tag-block payload, look-alike names, a destructive tool declaring `readOnlyHint`, missing annotations, unconstrained execution sink, duplicate name, empty description | a well-formed read-only server, a description that merely *mentions* a reserved name, the same shell tool with an `enum`-constrained parameter, a destructive tool that says so, and a server of readers whose names carry mutation words as substrings — `get_runbook`, `list_postgres_instances`, `get_updates`, `read_writer_stats`, `get_grant_balance` |
 | `code` | a reserved set missing a framework-owned tool, a registry that logs a duplicate and then overwrites, a confirmation gate that fails open by signature filtering | the same registry with a real guard, and the anti-pattern present only in comments and a docstring |
 
 Every positive cites where the pattern comes from: the Google ADK pull requests, MCP

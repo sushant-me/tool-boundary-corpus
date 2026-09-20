@@ -1,0 +1,102 @@
+{
+  "id": "tools-readonly-names-with-mutation-words",
+  "kind": "tool-list",
+  "label": "negative",
+  "expected_rules": [],
+  "source": "Regression case from mcpaudit's own false positive, found by auditing a realistic server rather than the example: the mutation hint list was matched as a substring, so get_runbook matched 'run', list_postgres_instances matched 'post' and get_updates matched 'update' - ten HIGH findings on a server whose tools only read.",
+  "fixture": {
+    "tools": [
+      {
+        "name": "get_runbook",
+        "description": "Read the operations runbook by name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "enum": [
+                "deploy",
+                "rollback",
+                "oncall"
+              ]
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false
+        }
+      },
+      {
+        "name": "list_postgres_instances",
+        "description": "List Postgres instances in the configured project.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false
+        }
+      },
+      {
+        "name": "get_updates",
+        "description": "Read the changelog entries published since a given date.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "since": {
+              "type": "string",
+              "description": "ISO-8601 date."
+            }
+          },
+          "required": [
+            "since"
+          ]
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false
+        }
+      },
+      {
+        "name": "read_writer_stats",
+        "description": "Read replication writer statistics for a cluster.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cluster": {
+              "type": "string",
+              "enum": [
+                "primary",
+                "replica"
+              ]
+            }
+          },
+          "required": [
+            "cluster"
+          ]
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false
+        }
+      },
+      {
+        "name": "get_grant_balance",
+        "description": "Read the remaining balance of a research grant.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false
+        }
+      }
+    ]
+  }
+}
