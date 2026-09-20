@@ -279,7 +279,7 @@ def test_the_self_authored_caveat_is_printed_in_every_report() -> None:
 # precision 0.750 here - the number this repository exists to prove was fixed -
 # so a mismatch was indistinguishable from a real regression.
 
-PINNED_MCPAUDIT_COMMIT = "e9b988ba56b318120167e885b107c43cd0e7fb8b"
+PINNED_MCPAUDIT_COMMIT = "d5106b953db26c57f5471a41a2bb9fc98483cee5"
 
 
 def test_mcpaudit_keeps_its_measured_scores_on_the_tool_list_cases() -> None:
@@ -405,7 +405,7 @@ def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
 # before the score is, and CI - which installs the pinned release - fails rather
 # than skips when the check cannot be made.
 
-PINNED_AGENTBOUND = "0.1.11"
+PINNED_AGENTBOUND = "0.1.12"
 
 
 def _detector_version(binary: str) -> str:
