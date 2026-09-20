@@ -27,8 +27,14 @@ jobs:
         run: |
           # No `|| true` anywhere here: a detector that fails to install must fail the run,
           # not silently reduce the benchmark to zero cases.
-          pip install "git+https://github.com/sushant-me/mcpaudit@e9b988ba56b318120167e885b107c43cd0e7fb8b"
-          pip install "git+https://github.com/sushant-me/agentbound@v0.1.11"
+          # Advanced deliberately. Both sat on builds from before security fixes in the
+          # detectors themselves: mcpaudit v0.1.2 closed invisible-character ranges that let
+          # a payload survive the "what a human would see" view, and agentbound v0.1.12
+          # stopped the masker erasing the word a rule matches on. A benchmark that
+          # re-measures detector precision against the unfixed builds is measuring the wrong
+          # thing, and its numbers would not describe what a user gets today.
+          pip install "git+https://github.com/sushant-me/mcpaudit@d5106b953db26c57f5471a41a2bb9fc98483cee5"
+          pip install "git+https://github.com/sushant-me/agentbound@v0.1.12"
       - name: Every case is well formed
         run: python3 -m corpus.cli validate
       # CORPUS_REQUIRE_DETECTORS turns the two detector tests' skip into a failure. They skip
