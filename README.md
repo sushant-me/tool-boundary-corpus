@@ -127,6 +127,33 @@ be used. `--kind` is required in practice because scoring a declaration scanner 
 framework source reports recall 0 for a tool doing its job — a number is only meaningful
 for the inputs a detector claims to handle.
 
+### A third-party scanner cannot be scored here, and that is a finding
+
+The obvious next row in the table is the best-known scanner in this space, so I tried:
+**Snyk Agent Scan v0.6.3** (the package formerly published as `mcp-scan`). It cannot be
+measured against this corpus, for a reason worth writing down rather than working around.
+
+It **does not analyse locally.** Pointed at a local stdio server, it connected and
+inspected the declarations on this machine correctly — and then its verification step
+called out to a hosted endpoint (`api.snyk.io/hidden/mcp-scan/analysis`, from
+`verify_api.py`). Offline, the run ends at exit 1 with **nothing on stdout**, which the
+harness would record as an error on every case rather than as a score. Scoring it needs
+a Snyk account, a network path, and sending the tool declarations to a third party.
+
+Both are legitimate designs, and the trade is real:
+
+| | local analysis (this corpus's rows) | hosted analysis (Snyk) |
+|---|---|---|
+| reproducible offline | yes | no |
+| declarations stay on your machine | yes | no — they are uploaded for analysis |
+| can improve without you upgrading | no | yes |
+
+So the corpus's own comparison is narrower than "every available scanner", and it says
+so. If somebody wants a Snyk row, the honest way is to run it with an account and
+publish the numbers **with the upload noted**, since a reader comparing tools should know
+which one sends their server's declarations away.
+
+
 ## Status
 
 `v0.1.0`, stdlib only, 27 tests (the harness's own behaviour is tested with fake detectors),
