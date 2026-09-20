@@ -1,0 +1,83 @@
+{
+  "id": "tools-drift-description-changed",
+  "kind": "tool-list-drift",
+  "label": "positive",
+  "expected_rules": [
+    "description-changed"
+  ],
+  "source": "Rug pull in its neutral form: a declaration is edited after a client approved it, and the client has nothing to compare against. The edit here is benign on purpose, so the case measures drift detection alone; the poisoned variant is a separate case.",
+  "fixture": {
+    "approved": {
+      "tools": [
+        {
+          "name": "search_resources",
+          "description": "Search configured accounts for resources.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        },
+        {
+          "name": "get_cost_report",
+          "description": "Fetch the monthly cost report.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        }
+      ]
+    },
+    "current": {
+      "tools": [
+        {
+          "name": "search_resources",
+          "description": "Search configured accounts for resources.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        },
+        {
+          "name": "get_cost_report",
+          "description": "Fetch the monthly cost report for a given billing month.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        }
+      ]
+    }
+  }
+}

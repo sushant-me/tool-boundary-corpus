@@ -48,3 +48,9 @@ jobs:
         run: 'python3 -m corpus.cli run --kind code --quiet-caveat --detector "agentbound scan {input} --json" --min-precision 1.0 --min-recall 1.0'
       - name: mcpaudit keeps its measured scores on the tool-list cases
         run: 'python3 -m corpus.cli run --kind tool-list --quiet-caveat --detector "python3 -m mcpaudit.cli audit {input} --json --no-colour" --min-precision 1.0 --min-recall 1.0'
+      # The drift class is the one where an adapter is part of the measurement, so it gets
+      # its own gate. The first version of that adapter read the detector's `findings` key
+      # and dropped its `drift` key, scoring recall 0.000 on cases the detector was in fact
+      # catching — and nothing in this workflow would have noticed.
+      - name: mcpaudit keeps its measured scores on the declaration-drift cases
+        run: 'python3 -m corpus.cli run --kind tool-list-drift --quiet-caveat --detector "python3 adapters/mcpaudit_drift_adapter.py {input}" --min-precision 1.0 --min-recall 1.0'

@@ -10,6 +10,8 @@ python3 -m corpus.cli run --kind code \
   --detector 'agentbound scan {input} --json'
 python3 -m corpus.cli run --kind tool-list \
   --detector 'python3 -m mcpaudit.cli audit {input} --json --no-colour'
+python3 -m corpus.cli run --kind tool-list-drift \
+  --detector 'python3 adapters/mcpaudit_drift_adapter.py {input}'
 ```
 
 A detector is a command that reads an input path and prints findings — an object with a
@@ -24,12 +26,21 @@ as "found nothing" — otherwise a broken detector would score perfectly on the 
 |---|---|---:|---:|---:|---:|
 | [`mcpaudit`](https://github.com/sushant-me/mcpaudit) v0.1.1 | tool-list (14) | 14 | **1.000** | **1.000** | 1.000 |
 | [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.11 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
+| `mcpaudit` + `mcpaudit_drift_adapter.py` | tool-list-drift (4) | 4 | **1.000** | **1.000** | 1.000 |
 
-Reproduce either row with the commands above; `--json` gives the per-case breakdown. Both
-rows name the build they were measured from, and the test suite refuses to report a number
-for a different one — a stale `agentbound` on `PATH` once produced precision **0.750** here,
-which is the number this repository exists to prove was fixed, so a version mismatch was
-indistinguishable from a real regression.
+Reproduce any row with the commands above; `--json` gives the per-case breakdown. Both
+detector rows name the build they were measured from, and the test suite refuses to report a
+number for a different one — a stale `agentbound` on `PATH` once produced precision
+**0.750** here, which is the number this repository exists to prove was fixed, so a version
+mismatch was indistinguishable from a real regression.
+
+The drift row carries a caveat the other two do not, and it is worth stating plainly: the
+adapter is part of the measurement there. The first version of it read the detector's
+`findings` list and dropped its `drift` list, and scored this repository's own tool at
+**recall 0.000** on cases it was in fact catching. The bug was in the shim, not the
+detector — which is exactly the failure mode a benchmark is supposed to be immune to, and
+is why `tests/test_drift.py` now runs the adapter against a fake detector that emits the
+real tool's JSON shape.
 
 > ### Read this before quoting those numbers
 >
@@ -96,18 +107,45 @@ The corpus is measured against v0.1.11 and the numbers above are unchanged.
 
 ## The cases
 
-**19 cases: 14 tool-list declarations, 5 code.** Each is a JSON file with an id, kind,
-label, the rules a detector is expected to report, the *source* of the pattern, and the
-fixture.
+**23 cases: 14 tool-list declarations, 5 code, 4 declaration-drift.** Each is a JSON file
+with an id, kind, label, the rules a detector is expected to report, the *source* of the
+pattern, and the fixture.
 
 | kind | positives (must be flagged) | negatives (must stay clean) |
 |---|---|---|
 | `tool-list` | reserved-name collision, instruction-carrying description, invisible tag-block payload, look-alike names, a destructive tool declaring `readOnlyHint`, missing annotations, unconstrained execution sink, duplicate name, empty description | a well-formed read-only server, a description that merely *mentions* a reserved name, the same shell tool with an `enum`-constrained parameter, a destructive tool that says so, and a server of readers whose names carry mutation words as substrings — `get_runbook`, `list_postgres_instances`, `get_updates`, `read_writer_stats`, `get_grant_balance` |
 | `code` | a reserved set missing a framework-owned tool, a registry that logs a duplicate and then overwrites, a confirmation gate that fails open by signature filtering | the same registry with a real guard, and the anti-pattern present only in comments and a docstring |
+| `tool-list-drift` | a description edited after approval; a read/write annotation flipped after approval; and the same description edit carrying an instruction to exfiltrate credentials, which belongs to two rules at once | a server whose `approved` and `current` declarations are byte-identical |
 
 Every positive cites where the pattern comes from: the Google ADK pull requests, MCP
 annotation semantics, the Unicode tag block (ASCII smuggling), homoglyph naming, and one
 case taken from a bug in `agentbound` itself.
+
+## Declaration drift, the one class that needs two states
+
+A rug pull — a tool declaration edited after a client approved it — cannot be expressed as
+a single payload, which is why it was absent from the first version of this corpus. A
+`tool-list-drift` fixture therefore carries **two** declarations of the same server,
+`approved` and `current`, and `materialise` writes both into a directory and hands the
+*directory* to the detector:
+
+```bash
+python3 -m corpus.cli run --kind tool-list-drift \
+  --detector 'python3 adapters/mcpaudit_drift_adapter.py {input}' \
+  --min-precision 1.0 --min-recall 1.0
+```
+
+How a detector records an approval is its own business, so the corpus does not prescribe a
+lock format and does not compare the two states itself. What it does insist on is that both
+states exist: a drift fixture missing either one is refused at load time, because a
+one-state case has an empty diff and would score every detector as passing.
+
+Two details in the fixture design are deliberate. The negative control's two states are
+**byte-identical** — anything else would make it a second positive. And the benign
+description edit and the poisoned one are **separate cases**, because a case whose changed
+text is itself an injected instruction measures two classes at once and no detector
+reporting only one of them can satisfy it.
+
 
 ## Using it on a detector I have not seen
 
@@ -193,6 +231,10 @@ cheap, and a scanner that also probes authentication and transport is solving a 
 problem. It is recorded here because a number in a comparison table would have hidden it.
 Reproduce with:
 
+```bash
+pip install mcp-security-scanner
+python3 -m corpus.cli run --kind tool-list --case tools-unconstrained-exec-sink \
+  --detector 'python3 adapters/mcp_scanner_adapter.py {input}'
 ```
 
 ### The two of them, case by case
@@ -238,19 +280,24 @@ schema identical. It reads the name; this corpus reads the parameter.
 Comparing against a tool that solves a different problem is also the cheapest way to find
 cases my corpus is missing. It has checks for **tool-description stability across time**
 (its `X-03`, the rug-pull shape), for **prompt templates and resources** (`P-03`), and for
-authentication, TLS and session handling - none of which this corpus has a case for. The
-lock file in `mcpaudit` addresses the first of those, and nothing here measures it. That is
-a gap, named rather than left for a reader to discover the way I did.bash
-pip install mcp-security-scanner
-python3 -m corpus.cli run --kind tool-list --case tools-unconstrained-exec-sink \
-  --detector 'python3 adapters/mcp_scanner_adapter.py {input}'
-```
+authentication, TLS and session handling.
+
+The first of those was a real gap when it was written: this corpus had **no case for a
+declaration that changes after approval**, because a single-payload fixture cannot express
+one. It has four now — see [declaration drift](#declaration-drift-the-one-class-that-needs-two-states)
+— and the shape they take is the direct result of noticing the gap here rather than
+inventing cases in the abstract.
+
+The other two remain open, and are named rather than left for a reader to discover the way
+I did. **Prompt templates and resources** have no case at all, and neither do authentication
+or transport — a detector that probes those is answering questions this corpus does not
+ask.
 
 
 ## Status
 
-`v0.1.0`, stdlib only, 32 tests (the harness's own behaviour is tested with fake detectors),
+`v0.1.0`, stdlib only, 54 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
-commit, `agentbound` at v0.1.11 — and both rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
+commit, `agentbound` at v0.1.11 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
 instead of skipping past it.

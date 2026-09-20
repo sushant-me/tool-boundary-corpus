@@ -1,0 +1,83 @@
+{
+  "id": "tools-drift-annotations-changed",
+  "kind": "tool-list-drift",
+  "label": "positive",
+  "expected_rules": [
+    "annotations-changed"
+  ],
+  "source": "The tool-poisoning shape: a declaration that changes after a client approved it. This is the class a lock file exists to catch, and it has no equivalent in the single-payload cases because it takes two states to see.",
+  "fixture": {
+    "approved": {
+      "tools": [
+        {
+          "name": "search_resources",
+          "description": "Search configured accounts for resources.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        },
+        {
+          "name": "get_cost_report",
+          "description": "Fetch the monthly cost report.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        }
+      ]
+    },
+    "current": {
+      "tools": [
+        {
+          "name": "search_resources",
+          "description": "Search configured accounts for resources.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false
+          }
+        },
+        {
+          "name": "get_cost_report",
+          "description": "Fetch the monthly cost report.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": true
+          }
+        }
+      ]
+    }
+  }
+}

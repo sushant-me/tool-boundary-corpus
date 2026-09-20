@@ -41,7 +41,7 @@ SELF_AUTHORED_CAVEAT = (
 @dataclass
 class Case:
     id: str
-    kind: str  # "tool-list" | "code"
+    kind: str  # "tool-list" | "code" | "tool-list-drift"
     label: str  # "positive" | "negative"
     expected_rules: list[str]
     source: str
@@ -95,8 +95,17 @@ def load_cases(directory: str | Path) -> list[Case]:
         missing = {"id", "kind", "label", "expected_rules", "source", "fixture"} - set(payload)
         if missing:
             raise ValueError(f"{path.name} is missing {sorted(missing)}")
-        if payload["kind"] not in {"tool-list", "code"}:
+        if payload["kind"] not in {"tool-list", "code", "tool-list-drift"}:
             raise ValueError(f"{path.name}: unknown kind {payload['kind']!r}")
+        if payload["kind"] == "tool-list-drift":
+            # A drift case is the only one with two states, so its fixture is validated
+            # separately: a case that forgot one of them would score a detector against
+            # nothing and read as a pass.
+            fixture = payload["fixture"]
+            for key in ("approved", "current"):
+                if key not in fixture:
+                    raise ValueError(
+                        f"{path.name}: a tool-list-drift fixture needs an {key!r} payload")
         if payload["label"] not in {"positive", "negative"}:
             raise ValueError(f"{path.name}: unknown label {payload['label']!r}")
         if not str(payload["source"]).strip():
@@ -122,6 +131,14 @@ def materialise(case: Case, workdir: Path) -> Path:
         target = workdir / "tools.json"
         target.write_text(json.dumps(case.fixture, indent=2), encoding="utf-8")
         return target
+    if case.kind == "tool-list-drift":
+        # Two declarations of the same server, before and after. The detector gets a
+        # directory and decides how to compare them: how a tool records an approval is
+        # the detector's business, and this corpus does not prescribe a lock format.
+        for key, name in (("approved", "approved.json"), ("current", "current.json")):
+            (workdir / name).write_text(
+                json.dumps(case.fixture[key], indent=2), encoding="utf-8")
+        return workdir
     target = workdir / "source"
     target.mkdir(parents=True, exist_ok=True)
     for name, content in (case.fixture.get("files") or {}).items():

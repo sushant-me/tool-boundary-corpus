@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("validate", help="check that every case is well-formed")
 
     list_parser = sub.add_parser("list", help="list the cases")
-    list_parser.add_argument("--kind", choices=["tool-list", "code"])
+    list_parser.add_argument("--kind", choices=["tool-list", "code", "tool-list-drift"])
     list_parser.add_argument("--json", action="store_true")
 
     run_parser = sub.add_parser("run", help="score a detector")
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         "--detector", required=True,
         help="command template; {input} is replaced with the case's path",
     )
-    run_parser.add_argument("--kind", choices=["tool-list", "code"],
+    run_parser.add_argument("--kind", choices=["tool-list", "code", "tool-list-drift"],
                             help="only score the cases of this kind (recommended)")
     run_parser.add_argument("--case", help="score a single case id")
     run_parser.add_argument("--json", action="store_true")

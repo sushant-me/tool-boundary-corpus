@@ -225,7 +225,7 @@ def test_a_case_with_no_expected_rules_on_a_positive_is_refused(tmp_path) -> Non
 def test_the_real_corpus_loads_and_is_balanced() -> None:
     cases = load_cases(CORPUS)
     assert len(cases) >= 16
-    assert {c.kind for c in cases} == {"tool-list", "code"}
+    assert {c.kind for c in cases} == {"tool-list", "code", "tool-list-drift"}
     assert {c.label for c in cases} == {"positive", "negative"}
     positives = [c for c in cases if c.is_positive]
     negatives = [c for c in cases if not c.is_positive]
