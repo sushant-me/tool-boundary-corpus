@@ -127,13 +127,14 @@ be used. `--kind` is required in practice because scoring a declaration scanner 
 framework source reports recall 0 for a tool doing its job — a number is only meaningful
 for the inputs a detector claims to handle.
 
-### A third-party scanner cannot be scored here, and that is a finding
+### Two third-party scanners, and what each of them can and cannot be asked
 
-The obvious next row in the table is the best-known scanner in this space, so I tried:
-**Snyk Agent Scan v0.6.3** (the package formerly published as `mcp-scan`). It cannot be
-measured against this corpus, for a reason worth writing down rather than working around.
+The obvious next rows in the table are the published scanners in this space. Neither can be
+scored the same way as the two above, for different reasons — and the reasons are the useful
+part, because they are what a reader comparing tools needs to know.
 
-It **does not analyse locally.** Pointed at a local stdio server, it connected and
+**Snyk Agent Scan v0.6.3** (the package formerly published as `mcp-scan`) **does not
+analyse locally.** Pointed at a local stdio server, it connected and
 inspected the declarations on this machine correctly — and then its verification step
 called out to a hosted endpoint (`api.snyk.io/hidden/mcp-scan/analysis`, from
 `verify_api.py`). Offline, the run ends at exit 1 with **nothing on stdout**, which the
@@ -153,10 +154,55 @@ so. If somebody wants a Snyk row, the honest way is to run it with an account an
 publish the numbers **with the upload noted**, since a reader comparing tools should know
 which one sends their server's declarations away.
 
+**`mcp-security-scanner` 0.1.5** (the `mcp-scan` CLI) is the opposite case: it **does** run
+entirely offline, launching the server itself over stdio. `adapters/serve_tools.py` answers
+the protocol from a captured payload and `adapters/mcp_scanner_adapter.py` maps its output,
+so anyone can reproduce what follows.
+
+It is a different instrument, and that is the first thing to say. Twelve checks, most of
+them about authentication, transport, resource exposure and session handling; only two
+overlap with what this corpus asserts:
+
+| its check | the corpus rule that asks the same question |
+|---|---|
+| `P-02` prompt/description injection heuristics | `instruction-in-declaration` |
+| `X-01` dangerous capability detection in tools | `unconstrained-sink-parameter` |
+
+Everything else it reports has no case here, and everything this corpus asserts about
+annotations, name collisions, invisible characters and look-alike names has no check
+there. **So it gets no precision/recall row**: a single number would measure the mismatch
+between two scopes rather than the quality of either.
+
+What it is worth reporting is one measured difference, on the class where both claim
+coverage. Case `tools-unconstrained-exec-sink` is a tool whose only parameter is a
+free-form string reaching a shell. Both detectors were run against it, and against a copy
+with **the same schema and a different tool name**:
+
+| tool name | schema | `mcpaudit` | `mcp-security-scanner` |
+|---|---|---|---|
+| `run_task` | free-form `command` string | `unconstrained-sink-parameter` | `X-01` **passes** |
+| `run_shell` | identical | `unconstrained-sink-parameter` | `X-01` **fails, high** |
+
+The schema is unchanged between the two rows; only the name moves. So `X-01` reads the
+danger from the tool's **name**, which means a tool that takes an arbitrary command under
+an innocuous name is reported as safe — while the check that lives in this corpus reads the
+**parameter**, which is where the capability actually is.
+
+That is a fair description of a design choice as much as a defect: name-based detection is
+cheap, and a scanner that also probes authentication and transport is solving a bigger
+problem. It is recorded here because a number in a comparison table would have hidden it.
+Reproduce with:
+
+```bash
+pip install mcp-security-scanner
+python3 -m corpus.cli run --kind tool-list --case tools-unconstrained-exec-sink \
+  --detector 'python3 adapters/mcp_scanner_adapter.py {input}'
+```
+
 
 ## Status
 
-`v0.1.0`, stdlib only, 27 tests (the harness's own behaviour is tested with fake detectors),
+`v0.1.0`, stdlib only, 32 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
 commit, `agentbound` at v0.1.11 — and both rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
