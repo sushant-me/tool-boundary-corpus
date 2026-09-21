@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software in work you publish, please cite it as below."
+title: "tool-boundary-corpus"
+type: software
+authors:
+  - family-names: Poudel
+    given-names: Sushant
+    email: sushant.poudel2028@gmail.com
+    affiliation: "Nepal Engineering College, Bhaktapur, Nepal"
+    # Register an ORCID iD and add it here — it is the identifier that
+    # disambiguates this author from other researchers of the same name:
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+abstract: >-
+  A labelled corpus of AI-agent tool-boundary cases and a detector-agnostic harness that measures any detector against it.
+keywords:
+  - ai-security
+  - agents
+  - mcp
+  - benchmark
+  - evaluation
+  - tool-boundary
+license: MIT
+repository-code: "https://github.com/sushant-me/tool-boundary-corpus"
