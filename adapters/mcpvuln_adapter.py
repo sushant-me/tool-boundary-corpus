@@ -40,6 +40,29 @@ import tempfile
 from pathlib import Path
 
 
+# mcpvuln's taxonomy translated into this corpus's vocabulary.
+#
+# Without this the harness scores raw rule strings, so a detector that finds the
+# right defect under a different name is counted as BOTH a false positive (a finding
+# whose id is not expected) and a false negative (the expected id was not found).
+# That is how mcpvuln was first measured at precision 0.000 / recall 0.000 while
+# actually detecting the case: it reported
+# `mcp.line_jumping.instructions_in_tool_description` where the case expects
+# `instruction-in-declaration`.
+#
+# Anything not in this table is passed through unchanged, so an unmapped rule shows
+# up as a real difference rather than being silently swallowed.
+RULE_MAP = {
+    "mcp.line_jumping.instructions_in_tool_description": "instruction-in-declaration",
+    "mcp.line_jumping": "instruction-in-declaration",
+    "mcp.invisible_characters": "invisible-characters",
+    "mcp.lookalike_tool_name": "look-alike-tool-names",
+    "mcp.reserved_name_collision": "reserved-name-collision",
+    "mcp.destructive_declared_readonly": "destructive-declared-read-only",
+    "mcp.unconstrained_sink": "unconstrained-sink-parameter",
+}
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: mcpvuln_adapter.py <directory-or-payload>", file=sys.stderr)
@@ -87,7 +110,8 @@ def main(argv: list[str]) -> int:
 
     findings = []
     for item in data.get("findings", []) or []:
-        rule = item.get("pattern_id") or item.get("category") or "unlabelled"
+        raw = item.get("pattern_id") or item.get("category") or "unlabelled"
+        rule = RULE_MAP.get(raw, raw)
         findings.append({
             "rule": rule,
             "severity": item.get("severity"),
