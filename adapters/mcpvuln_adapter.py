@@ -42,12 +42,24 @@ from pathlib import Path
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        print("usage: mcpvuln_adapter.py <directory>", file=sys.stderr)
+        print("usage: mcpvuln_adapter.py <directory-or-payload>", file=sys.stderr)
         return 2
     target = Path(argv[1])
-    if not target.is_dir():
-        print(f"not a directory: {target}", file=sys.stderr)
+    if not target.exists():
+        print(f"not found: {target}", file=sys.stderr)
         return 2
+
+    # mcpvuln scans a codebase, so a bare declaration payload has to be given a
+    # directory to live in. The tool-list cases are single JSON files, and this is
+    # what lets the same adapter score both kinds of case.
+    tmp_holder: tempfile.TemporaryDirectory | None = None
+    if target.is_file():
+        tmp_holder = tempfile.TemporaryDirectory()
+        stage = Path(tmp_holder.name)
+        shutil.copy(target, stage / "tools_list.json")
+        scan_target = stage
+    else:
+        scan_target = target
 
     # The console entry point, not `python -m mcpvuln`: the package ships no
     # __main__, so the module form fails with "cannot be directly executed".
@@ -59,7 +71,7 @@ def main(argv: list[str]) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         contract = Path(tmp) / "contract.json"
         proc = subprocess.run(
-            [exe, str(target), "--json", str(contract), "--quiet"],
+            [exe, str(scan_target), "--json", str(contract), "--quiet"],
             capture_output=True,
             text=True,
             timeout=300,
