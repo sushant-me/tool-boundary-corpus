@@ -91,13 +91,24 @@ def main(argv: list[str]) -> int:
         print("mcpvuln is not installed or not on PATH", file=sys.stderr)
         return 2
 
+    # Resolve before changing directory below, so a relative argument still works.
+    scan_target = scan_target.resolve()
+
     with tempfile.TemporaryDirectory() as tmp:
         contract = Path(tmp) / "contract.json"
+        # `--json` does NOT suppress mcpvuln's other output: the tool also writes a
+        # human-readable `<target-basename>_security_report.md` into its *current
+        # working directory* (verified against mcpvuln 0.3.0). The harness runs from
+        # the repository root, so inheriting that CWD drops one stray report per
+        # JSON case into the checkout — 78 of them had accumulated before this was
+        # found. Running the scan inside the temp directory that already holds the
+        # contract means the litter is removed along with it.
         proc = subprocess.run(
             [exe, str(scan_target), "--json", str(contract), "--quiet"],
             capture_output=True,
             text=True,
             timeout=300,
+            cwd=tmp,
         )
         if not contract.exists():
             print(

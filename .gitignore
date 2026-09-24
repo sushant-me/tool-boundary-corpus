@@ -3,3 +3,11 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 uv.lock
+
+# mcpvuln writes `<target-basename>_security_report.md` into its current working
+# directory in addition to the --json contract, so a scan run from the repository
+# root drops one here. adapters/mcpvuln_adapter.py now runs the tool inside a
+# temporary directory and tests/test_mcpvuln_adapter.py pins that, but this keeps
+# a future adapter — or a hand-run of the tool — from committing them again.
+# 78 had accumulated before the adapter was fixed.
+*_security_report.md

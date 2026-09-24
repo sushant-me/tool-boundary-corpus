@@ -89,3 +89,73 @@ def test_unmapped_rules_pass_through_rather_than_being_dropped():
     adapter = _load_adapter()
     unknown = "mcp.some.future.pattern"
     assert adapter.RULE_MAP.get(unknown, unknown) == unknown
+
+
+# A stand-in for the real tool, reproducing the side effect that mattered.
+#
+# mcpvuln 0.3.0 writes `<target-basename>_security_report.md` into its CURRENT
+# WORKING DIRECTORY in addition to the `--json` contract — the `--json` flag does
+# not redirect that second output. Verified by running the real binary: with a
+# fresh empty CWD and a target elsewhere, the run left exactly one such file
+# behind. A fake is used rather than the real tool so this test runs in CI, where
+# mcpvuln is not installed.
+_FAKE_MCPVULN = '''\
+import json, os, pathlib, sys
+
+target = sys.argv[1]
+contract = sys.argv[sys.argv.index("--json") + 1]
+pathlib.Path(contract).write_text(json.dumps({"findings": []}), encoding="utf-8")
+pathlib.Path(os.getcwd(), f"{pathlib.Path(target).name}_security_report.md").write_text(
+    "stand-in for mcpvuln's human-readable report", encoding="utf-8")
+'''
+
+
+def test_the_adapter_leaves_no_report_files_in_the_working_directory(tmp_path):
+    """Running a scan must not litter the caller's directory.
+
+    The adapter stages each single-file case into a temporary directory and then
+    runs mcpvuln, which drops `<staging-dir>_security_report.md` into whatever CWD
+    it inherits. The harness runs from the repository root, so every JSON case used
+    to leave one stray file behind — 78 had accumulated in the checkout.
+
+    Nothing failed when that happened: the adapter still printed valid findings and
+    exited correctly. The only symptom was clutter, which is exactly the kind of
+    thing that goes unnoticed, so it is pinned here rather than left to review.
+    """
+    import os
+    import subprocess
+    import sys
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_tool = fake_bin / "mcpvuln"
+    fake_tool.write_text(f"#!{sys.executable}\n{_FAKE_MCPVULN}", encoding="utf-8")
+    fake_tool.chmod(0o755)
+
+    # A directory that stands in for "wherever the caller happens to be".
+    caller_cwd = tmp_path / "caller-cwd"
+    caller_cwd.mkdir()
+
+    case = ROOT / "cases" / "tools-clean-readonly.json"
+    assert case.exists(), f"fixture case missing: {case}"
+
+    env = dict(os.environ)
+    env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "adapters" / "mcpvuln_adapter.py"), str(case)],
+        cwd=caller_cwd, capture_output=True, text=True, env=env, timeout=120,
+    )
+
+    strays = sorted(p.name for p in caller_cwd.glob("*_security_report.md"))
+    assert not strays, (
+        f"the adapter left {len(strays)} mcpvuln report file(s) in the working "
+        f"directory: {strays}. mcpvuln writes that file into its CWD regardless of "
+        f"--json, so the subprocess must run with cwd set to a temporary directory."
+    )
+
+    # The fix must not break the adapter's actual job.
+    assert proc.returncode in (0, 1), (
+        f"adapter exited {proc.returncode}; stderr: {proc.stderr.strip()[:300]}"
+    )
+    payload = json.loads(proc.stdout)
+    assert "findings" in payload, payload
