@@ -25,7 +25,7 @@ as "found nothing" — otherwise a broken detector would score perfectly on the 
 | detector | kind | cases | precision | recall | F1 |
 |---|---|---:|---:|---:|---:|
 | [`mcpaudit`](https://github.com/sushant-me/mcpaudit) v0.1.1 | tool-list (14) | 14 | **1.000** | **1.000** | 1.000 |
-| [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.11 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
+| [`agentbound`](https://github.com/sushant-me/agentbound) v0.1.12 | code (5) | 5 | **1.000** | **1.000** | 1.000 |
 | `mcpaudit` + `mcpaudit_drift_adapter.py` | tool-list-drift (4) | 4 | **1.000** | **1.000** | 1.000 |
 
 Reproduce any row with the commands above; `--json` gives the per-case breakdown. Both
@@ -103,7 +103,8 @@ them. A consumer pinning that project by release could not tell which build it h
 this repository's entire method. v0.1.10 is immutable, so
 [agentbound v0.1.11](https://github.com/sushant-me/agentbound/releases/tag/v0.1.11) carries
 the fix and the test that pins the two version strings together; the pin here moved with it.
-The corpus is measured against v0.1.11 and the numbers above are unchanged.
+The corpus is measured against v0.1.12 and the numbers above are unchanged — the pin
+advanced again for the v0.1.12 masking fix.
 
 ## The cases
 
@@ -298,6 +299,6 @@ ask.
 
 `v0.1.0`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
-commit, `agentbound` at v0.1.11 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
+commit, `agentbound` at v0.1.12 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
 instead of skipping past it.
