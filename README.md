@@ -296,7 +296,7 @@ ask.
 
 ## Status
 
-`v0.1.0`, stdlib only, 54 tests (the harness's own behaviour is tested with fake detectors),
+`v0.1.0`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
 commit, `agentbound` at v0.1.11 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
