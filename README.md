@@ -302,3 +302,12 @@ CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpa
 commit, `agentbound` at v0.1.12 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
 instead of skipping past it.
+
+## The write-ups for what this corpus found
+
+- [**A benchmark found a bug in my own detector**](https://sushantpoudel2028.com.np/writing/a-benchmark-found-a-bug-in-my-own-detector)
+  — what this corpus is for, the false positive it found in the scanner it was built to
+  measure, and the three defects that fixing it surfaced.
+- [**My own benchmark said 1.000. Real code said 0.14.**](https://sushantpoudel2028.com.np/writing/my-benchmark-said-1000-real-code-said-014)
+  — why a corpus its author wrote cannot be the last word, and what running the same
+  scanner against 14 real agent frameworks found instead.
