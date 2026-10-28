@@ -16,4 +16,4 @@ __all__ = [
     "materialise", "metrics", "report", "run_detector", "score",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

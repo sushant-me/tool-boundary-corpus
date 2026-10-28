@@ -164,6 +164,24 @@ python3 -m corpus.cli run --kind tool-list \
   --detector 'your-scanner --format json {input}' --min-precision 0.9 --min-recall 0.9
 ```
 
+### Use it in CI
+
+The repository is a composite action, so the gate is one step in a workflow:
+
+```yaml
+- uses: sushant-me/tool-boundary-corpus@v1
+  with:
+    detector: my-scanner --format json {input}
+    kind: tool-list
+    min-precision: '0.9'
+    min-recall: '0.9'
+```
+
+It exports `exit-code`, `precision`, `recall`, `passed` and `cases`, writes the scorecard to
+the job summary, and prints a failure line per case that missed. The self-authored-corpus
+caveat travels with the numbers into the summary — a gate is the right use of this corpus, an
+independent benchmark is not.
+
 `--min-precision` / `--min-recall` turn the numbers into a gate; exit codes are `0` all
 cases passed, `1` a case failed or a floor was missed, `2` the corpus or detector could not
 be used. `--kind` is required in practice because scoring a declaration scanner on
@@ -301,7 +319,7 @@ ask.
 
 ## Status
 
-`v0.1.0`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
+`v0.1.1`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
 commit, `agentbound` at v0.1.12 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run

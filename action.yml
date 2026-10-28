@@ -1,0 +1,198 @@
+name: tool-boundary-corpus
+description: >-
+  Score a detector against a labelled corpus of agent tool-boundary cases and gate on
+  precision and recall. The detector is any command that reads a path and prints findings,
+  so this works for scanners the corpus has never seen — including one that does not exist
+  yet.
+author: Sushant Poudel
+
+branding:
+  icon: check-circle
+  color: purple
+
+inputs:
+  detector:
+    description: >-
+      Command template for the detector; `{input}` is replaced with the case's path, e.g.
+      `my-scanner --format json {input}`. Exit 0 or 1, with the findings on stdout.
+    required: true
+  kind:
+    description: >-
+      Which cases to score: `tool-list`, `code` or `tool-list-drift`. Set it — scoring a
+      declaration scanner on framework source reports recall 0 for a tool doing its job.
+    required: false
+    default: tool-list
+  case:
+    description: Score a single case id instead of the whole kind.
+    required: false
+    default: ''
+  min-precision:
+    description: Fail the run when precision falls below this fraction (0-1).
+    required: false
+    default: ''
+  min-recall:
+    description: Fail the run when recall falls below this fraction (0-1).
+    required: false
+    default: ''
+  known-failure:
+    description: >-
+      A case id this detector is known to fail, one per line. Any *other* failure still
+      fails the run, and a known failure that starts passing is an error too — so the
+      entry cannot rot into a permanent exemption.
+    required: false
+    default: ''
+  quiet-caveat:
+    description: Suppress the self-authored-corpus warning in the log (the job summary keeps it).
+    required: false
+    default: 'false'
+  summary:
+    description: Write the scorecard to the job summary.
+    required: false
+    default: 'true'
+
+outputs:
+  exit-code:
+    description: '0 every case passed and every floor met; 1 a case failed or a floor was missed; 2 the corpus or detector could not be used.'
+    value: ${{ steps.score.outputs.exit-code }}
+  precision:
+    description: Precision across the scored cases.
+    value: ${{ steps.score.outputs.precision }}
+  recall:
+    description: Recall across the scored cases.
+    value: ${{ steps.score.outputs.recall }}
+  passed:
+    description: Number of cases that passed.
+    value: ${{ steps.score.outputs.passed }}
+  cases:
+    description: Number of cases scored.
+    value: ${{ steps.score.outputs.cases }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install tool-boundary-corpus
+      shell: bash
+      # A venv rather than `pip install` into the runner's Python: runner images change,
+      # and a PEP-668 externally-managed environment would turn that into a setup failure
+      # instead of a score.
+      run: |
+        python3 -m venv "$RUNNER_TEMP/corpus-venv"
+        "$RUNNER_TEMP/corpus-venv/bin/pip" install --quiet --disable-pip-version-check "${{ github.action_path }}"
+        echo "$RUNNER_TEMP/corpus-venv/bin" >> "$GITHUB_PATH"
+
+    - name: Score
+      id: score
+      shell: bash
+      env:
+        CORPUS_DETECTOR: ${{ inputs.detector }}
+        CORPUS_KIND: ${{ inputs.kind }}
+        CORPUS_CASE: ${{ inputs.case }}
+        CORPUS_MIN_PRECISION: ${{ inputs.min-precision }}
+        CORPUS_MIN_RECALL: ${{ inputs.min-recall }}
+        CORPUS_KNOWN_FAILURE: ${{ inputs.known-failure }}
+        CORPUS_QUIET: ${{ inputs.quiet-caveat }}
+        CORPUS_SUMMARY: ${{ inputs.summary }}
+      run: |
+        set -euo pipefail
+
+        args=(run --json --detector "$CORPUS_DETECTOR")
+        [ -n "$CORPUS_KIND" ] && args+=(--kind "$CORPUS_KIND")
+        [ -n "$CORPUS_CASE" ] && args+=(--case "$CORPUS_CASE")
+        [ -n "$CORPUS_MIN_PRECISION" ] && args+=(--min-precision "$CORPUS_MIN_PRECISION")
+        [ -n "$CORPUS_MIN_RECALL" ] && args+=(--min-recall "$CORPUS_MIN_RECALL")
+        [ "$CORPUS_QUIET" = "true" ] && args+=(--quiet-caveat)
+        while IFS= read -r known; do
+          [ -n "$known" ] && args+=(--known-failure "$known")
+        done <<< "$CORPUS_KNOWN_FAILURE"
+
+        set +e
+        python3 -m corpus.cli "${args[@]}" > "$RUNNER_TEMP/corpus.json"
+        code=$?
+        set -e
+
+        # The detector is only run once: a slow or metered scanner should not pay twice
+        # just so the log has prose. The report is rendered from the JSON.
+        read -r cases passed precision recall < <(python3 - "$RUNNER_TEMP/corpus.json" <<'PY'
+        import json, sys
+
+        raw = open(sys.argv[1]).read().strip()
+        try:
+            report = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            report = {}
+        m = report.get("metrics") or {}
+        fmt = lambda v: "" if v is None else f"{v:.3f}"
+        print(m.get("cases", 0), m.get("passed", 0), fmt(m.get("precision")), fmt(m.get("recall")))
+        PY
+        )
+
+        python3 - "$RUNNER_TEMP/corpus.json" <<'PY'
+        import json, sys
+
+        raw = open(sys.argv[1]).read().strip()
+        try:
+            report = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            report = {}
+        if not report:
+            print("corpus: no report was produced; the detector or the corpus could not be used")
+            sys.exit(0)
+        m = report.get("metrics") or {}
+        print(f"cases {m.get('cases', 0)} · passed {m.get('passed', 0)} · "
+              f"errors {m.get('errors', 0)}")
+        print(f"precision {m.get('precision')} · recall {m.get('recall')} · f1 {m.get('f1')}")
+        failed = [c for c in report.get("cases") or [] if not c.get("passed")]
+        for c in failed:
+            print(f"  FAIL {c.get('case')}: expected {c.get('expected_rules')}, "
+                  f"found {c.get('found_rules')} {c.get('error') or ''}".rstrip())
+        if report.get("caveat"):
+            print()
+            print(f"NOTE: {report['caveat']}")
+        PY
+
+        {
+          echo "cases=$cases"
+          echo "passed=$passed"
+          echo "precision=$precision"
+          echo "recall=$recall"
+          echo "exit-code=$code"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ "$CORPUS_SUMMARY" = "true" ]; then
+          python3 - "$RUNNER_TEMP/corpus.json" "$code" "$CORPUS_MIN_PRECISION" "$CORPUS_MIN_RECALL" \
+            >> "$GITHUB_STEP_SUMMARY" <<'PY'
+        import json, sys
+
+        raw = open(sys.argv[1]).read().strip()
+        try:
+            report = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            report = {}
+        code, min_p, min_r = sys.argv[2], sys.argv[3], sys.argv[4]
+        m = report.get("metrics") or {}
+
+        print("## tool-boundary-corpus")
+        print()
+        print(f"kind `{report.get('kind')}` · **{m.get('passed', 0)}/{m.get('cases', 0)}** cases · "
+              f"exit `{code}`")
+        print()
+        print("| metric | value | floor |")
+        print("|---|---|---|")
+        fmt = lambda v: "—" if v is None else f"{v:.3f}"
+        print(f"| precision | {fmt(m.get('precision'))} | {min_p or '—'} |")
+        print(f"| recall | {fmt(m.get('recall'))} | {min_r or '—'} |")
+        print(f"| errors | {m.get('errors', 0)} | — |")
+        print()
+        failed = [c for c in report.get("cases") or [] if not c.get("passed")]
+        if failed:
+            print("| failed case | expected | found |")
+            print("|---|---|---|")
+            for c in failed:
+                print(f"| `{c.get('case')}` | `{c.get('expected_rules')}` | `{c.get('found_rules')}` |")
+            print()
+        if report.get("caveat"):
+            print(f"> {report['caveat']}")
+        PY
+        fi
+
+        exit "$code"

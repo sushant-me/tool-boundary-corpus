@@ -1,6 +1,6 @@
 [project]
 name = "tool-boundary-corpus"
-version = "0.1.0"
+version = "0.1.1"
 description = "A labelled corpus of agent tool-boundary cases and a detector-agnostic harness that scores precision and recall against them"
 readme = "README.md"
 requires-python = ">=3.11"
