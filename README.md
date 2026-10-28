@@ -1,5 +1,9 @@
 # tool-boundary-corpus
 
+[![CI](https://github.com/sushant-me/tool-boundary-corpus/actions/workflows/ci.yml/badge.svg)](https://github.com/sushant-me/tool-boundary-corpus/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://github.com/sushant-me/tool-boundary-corpus/blob/main/pyproject.toml)
+[![License](https://img.shields.io/github/license/sushant-me/tool-boundary-corpus)](https://github.com/sushant-me/tool-boundary-corpus/blob/main/LICENSE)
+
 **A labelled corpus of agent tool-boundary cases, and a harness that scores any detector
 against it.** Precision and recall only exist if somebody wrote the cases down.
 
