@@ -8,6 +8,7 @@
 against it.** Precision and recall only exist if somebody wrote the cases down.
 
 ```bash
+pip install "git+https://github.com/sushant-me/tool-boundary-corpus.git@v0.1.1"
 python3 -m corpus.cli validate
 python3 -m corpus.cli list --kind tool-list
 python3 -m corpus.cli run --kind code \
