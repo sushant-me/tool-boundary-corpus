@@ -113,7 +113,7 @@ advanced again for the v0.1.12 masking fix.
 
 ## The cases
 
-**23 cases: 14 tool-list declarations, 5 code, 4 declaration-drift.** Each is a JSON file
+**24 cases: 14 tool-list declarations, 6 code, 4 declaration-drift.** Each is a JSON file
 with an id, kind, label, the rules a detector is expected to report, the *source* of the
 pattern, and the fixture.
 

@@ -1,0 +1,14 @@
+{
+  "id": "code-duplicate-warned-to-stderr",
+  "kind": "code",
+  "label": "positive",
+  "expected_rules": [
+    "tool-dict-last-wins"
+  ],
+  "source": "A duplicate reported by printing to stderr instead of through a logger, then assigned anyway - the same warning-is-not-a-guard bug. Found by running agentbound over its own review sample, which was silent on it until the rule's report detection accepted prints to stderr as reports.",
+  "fixture": {
+    "files": {
+      "agent.py": "import sys\n\nBUILTIN_TOOLS = {\"finish\", \"lookup_order\"}\n\n\nclass ToolRegistry:\n    def __init__(self) -> None:\n        self._tools = {}\n\n    def register(self, tool, plugin: bool = False) -> None:\n        if plugin and tool.name in BUILTIN_TOOLS:\n            print(f\"warning: duplicate tool name {tool.name!r} ignored\", file=sys.stderr)\n        self._tools[tool.name] = tool\n"
+    }
+  }
+}
