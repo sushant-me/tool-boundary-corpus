@@ -8,7 +8,7 @@
 against it.** Precision and recall only exist if somebody wrote the cases down.
 
 ```bash
-pip install "git+https://github.com/sushant-me/tool-boundary-corpus.git@v0.1.1"
+pip install "git+https://github.com/sushant-me/tool-boundary-corpus.git@v0.1.2"
 python3 -m corpus.cli validate
 python3 -m corpus.cli list --kind tool-list
 python3 -m corpus.cli run --kind code \
@@ -321,7 +321,7 @@ ask.
 
 ## Status
 
-`v0.1.1`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
+`v0.1.2`, stdlib only, 58 tests (the harness's own behaviour is tested with fake detectors),
 CI on 3.11/3.12/3.13 with both detectors installed at pinned revisions — `mcpaudit` at a
 commit, `agentbound` at v0.1.16 — and all three rows above re-measured. `CORPUS_REQUIRE_DETECTORS=1`
 is set there, so a detector that fails to install or does not match its pin fails the run
