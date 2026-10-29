@@ -351,9 +351,10 @@ def test_a_known_failure_is_not_counted_and_the_run_passes(tmp_path) -> None:
     result = run_cli("run", "--kind", "code", "--quiet-caveat", "--detector", command,
                      "--known-failure", "code-tools-dict-last-wins",
                      "--known-failure", "code-confirmation-fails-open",
-                     "--known-failure", "code-reserved-name-set-incomplete")
+                     "--known-failure", "code-reserved-name-set-incomplete",
+                     "--known-failure", "code-duplicate-warned-to-stderr")
     assert result.returncode == 0, result.stderr
-    assert result.stdout.count("known failure (expected, not counted)") == 3
+    assert result.stdout.count("known failure (expected, not counted)") == 4
 
 
 def test_an_unlisted_failure_still_fails_the_run(tmp_path) -> None:
@@ -394,7 +395,7 @@ def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
     payload = jsonlib.loads(result.stdout)
     assert payload["metrics"]["recall"] == 0.0
     assert "self-authored" in payload["caveat"].lower()
-    assert len(payload["cases"]) == 5
+    assert len(payload["cases"]) == 6
 
 
 # --- the detector has to be the build whose score is being asserted ---------
@@ -405,7 +406,7 @@ def test_the_json_flag_outputs_the_metrics_and_the_caveat(tmp_path) -> None:
 # before the score is, and CI - which installs the pinned release - fails rather
 # than skips when the check cannot be made.
 
-PINNED_AGENTBOUND = "0.1.12"
+PINNED_AGENTBOUND = "0.1.16"
 
 
 def _detector_version(binary: str) -> str:
